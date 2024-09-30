@@ -1,0 +1,117 @@
+---
+- name: Deploy Podcast Marketing Automation SaaS
+  hosts: all
+  become: true
+  vars_files:
+    - vars/main.yml
+
+  roles:
+    - webserver
+    - database
+    - monitoring
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - docker.io
+          - python3-pip
+          - python3-docker
+        state: present
+
+    - name: Install Docker SDK for Python
+      pip:
+        name: docker
+
+    - name: Ensure Docker service is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull Docker images
+      docker_image:
+        name: "{{ item }}"
+        source: pull
+      loop:
+        - "{{ django_image }}"
+        - "{{ react_image }}"
+        - "{{ postgres_image }}"
+        - "{{ redis_image }}"
+        - "{{ celery_image }}"
+
+    - name: Create Docker network
+      docker_network:
+        name: podcast_network
+        state: present
+
+    - name: Start PostgreSQL container
+      docker_container:
+        name: postgres_db
+        image: "{{ postgres_image }}"
+        state: started
+        restart_policy: always
+        env:
+          POSTGRES_DB: "{{ db_name }}"
+          POSTGRES_USER: "{{ db_user }}"
+          POSTGRES_PASSWORD: "{{ db_password }}"
+        networks:
+          - name: podcast_network
+
+    - name: Start Redis container
+      docker_container:
+        name: redis_cache
+        image: "{{ redis_image }}"
+        state: started
+        restart_policy: always
+        networks:
+          - name: podcast_network
+
+    - name: Start Django backend container
+      docker_container:
+        name: django_backend
+        image: "{{ django_image }}"
+        state: started
+        restart_policy: always
+        env:
+          DATABASE_URL: "postgres://{{ db_user }}:{{ db_password }}@postgres_db/{{ db_name }}"
+          REDIS_URL: "redis://redis_cache:6379"
+        networks:
+          - name: podcast_network
+        ports:
+          - "8000:8000"
+
+    - name: Start Celery worker container
+      docker_container:
+        name: celery_worker
+        image: "{{ celery_image }}"
+        state: started
+        restart_policy: always
+        env:
+          DATABASE_URL: "postgres://{{ db_user }}:{{ db_password }}@postgres_db/{{ db_name }}"
+          REDIS_URL: "redis://redis_cache:6379"
+        networks:
+          - name: podcast_network
+
+    - name: Start React frontend container
+      docker_container:
+        name: react_frontend
+        image: "{{ react_image }}"
+        state: started
+        restart_policy: always
+        env:
+          REACT_APP_API_URL: "http://django_backend:8000"
+        networks:
+          - name: podcast_network
+        ports:
+          - "80:80"
+
+# Human tasks:
+# - Define and create vars/main.yml file with necessary variables
+# - Ensure correct Docker image names and versions are used
+# - Review and adjust container environment variables and configurations
+# - Implement proper secret management for sensitive information
