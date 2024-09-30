@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: SQS Stack for Podcast Marketing Automation SaaS
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: Development
+    AllowedValues:
+      - Development
+      - Staging
+      - Production
+    Description: Environment name for the SQS resources
+
+Resources:
+  PodcastProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${EnvironmentName}-PodcastProcessingQueue
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+
+  TranscriptionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${EnvironmentName}-TranscriptionQueue
+      VisibilityTimeout: 900
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+
+  ContentGenerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${EnvironmentName}-ContentGenerationQueue
+      VisibilityTimeout: 600
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+
+  SocialMediaPostQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub ${EnvironmentName}-SocialMediaPostQueue
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 345600
+      MaximumMessageSize: 262144
+      DelaySeconds: 0
+      ReceiveMessageWaitTimeSeconds: 20
+
+Outputs:
+  PodcastProcessingQueueURL:
+    Description: URL of the Podcast Processing Queue
+    Value: !Ref PodcastProcessingQueue
+    Export:
+      Name: !Sub ${AWS::StackName}-PodcastProcessingQueueURL
+
+  TranscriptionQueueURL:
+    Description: URL of the Transcription Queue
+    Value: !Ref TranscriptionQueue
+    Export:
+      Name: !Sub ${AWS::StackName}-TranscriptionQueueURL
+
+  ContentGenerationQueueURL:
+    Description: URL of the Content Generation Queue
+    Value: !Ref ContentGenerationQueue
+    Export:
+      Name: !Sub ${AWS::StackName}-ContentGenerationQueueURL
+
+  SocialMediaPostQueueURL:
+    Description: URL of the Social Media Post Queue
+    Value: !Ref SocialMediaPostQueue
+    Export:
+      Name: !Sub ${AWS::StackName}-SocialMediaPostQueueURL
+
+# Human Tasks:
+# - Review and adjust SQS queue configurations based on expected load and processing times
+# - Implement proper IAM roles and policies for accessing these SQS queues
+# - Set up CloudWatch alarms for monitoring queue depths and processing times
