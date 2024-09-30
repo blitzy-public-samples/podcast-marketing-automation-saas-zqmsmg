@@ -18,7 +18,7 @@ matplotlib==3.7.1
 sentry-sdk==1.19.1
 django-storages==1.13.2
 Pillow==9.5.0
-django-filter==23.1
+django-filter==24.3
 drf-yasg==1.21.5
 pytest==7.3.0
 pytest-django==4.5.2
