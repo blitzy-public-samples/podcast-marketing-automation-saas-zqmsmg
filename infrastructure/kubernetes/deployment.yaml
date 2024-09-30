@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podcast-automation-app
+  labels:
+    app: podcast-automation
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: podcast-automation
+  template:
+    metadata:
+      labels:
+        app: podcast-automation
+    spec:
+      containers:
+        - name: podcast-automation-backend
+          image: {{ ECR_REGISTRY }}/podcast-automation-backend:{{ IMAGE_TAG }}
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: podcast-automation-secrets
+                  key: database-url
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: podcast-automation-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: podcast-automation-secrets
+                  key: aws-secret-access-key
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+        - name: podcast-automation-frontend
+          image: {{ ECR_REGISTRY }}/podcast-automation-frontend:{{ IMAGE_TAG }}
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+
+# Human tasks:
+# - Replace {{ ECR_REGISTRY }} with the actual ECR registry URL
+# - Replace {{ IMAGE_TAG }} with the appropriate image tag or version
+# - Ensure the 'podcast-automation-secrets' secret is created in the Kubernetes cluster with the required keys
+# - Verify and adjust resource limits and requests based on actual application requirements and cluster capacity
+# - Implement the /health and /ready endpoints in the backend application for proper health and readiness checks
