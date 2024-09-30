@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for setting up monitoring resources for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project
+
+  Environment:
+    Type: String
+    Description: Environment (e.g., dev, staging, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  AlertEmail:
+    Type: String
+    Description: Email address to receive monitoring alerts
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for the monitoring resources
+
+  PrivateSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Private Subnet ID for the monitoring resources
+
+Resources:
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/cloudwatch/${ProjectName}-${Environment}"
+      RetentionInDays: 30
+
+  CloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub "${ProjectName}-${Environment}-dashboard"
+      DashboardBody: !Sub '{"widgets": []}'
+
+  CPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${Environment}-cpu-utilization-alarm"
+      AlarmDescription: "Alarm if CPU utilization exceeds 70% for 5 minutes"
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+
+  MemoryUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${Environment}-memory-utilization-alarm"
+      AlarmDescription: "Alarm if memory utilization exceeds 80% for 5 minutes"
+      MetricName: MemoryUtilization
+      Namespace: System/Linux
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+
+  APILatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "${ProjectName}-${Environment}-api-latency-alarm"
+      AlarmDescription: "Alarm if API latency exceeds 1 second for 5 minutes"
+      MetricName: Latency
+      Namespace: AWS/ApiGateway
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1000
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${ProjectName}-${Environment}-alerts"
+      DisplayName: "Podcast Marketing Automation Alerts"
+
+  SNSSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref SNSTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+Outputs:
+  CloudWatchLogGroupName:
+    Description: Name of the CloudWatch Log Group
+    Value: !Ref CloudWatchLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-LogGroupName"
+
+  CloudWatchDashboardName:
+    Description: Name of the CloudWatch Dashboard
+    Value: !Ref CloudWatchDashboard
+    Export:
+      Name: !Sub "${AWS::StackName}-DashboardName"
+
+  SNSTopicArn:
+    Description: ARN of the SNS Topic for alerts
+    Value: !Ref SNSTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-SNSTopicArn"
+
+# Human Tasks:
+# - Review and adjust the CloudWatch alarm thresholds to ensure they align with the application's performance requirements
+# - Customize the CloudWatch dashboard to include relevant metrics for the Podcast Marketing Automation SaaS platform
+# - Consider adding additional alarms for database performance, API errors, and other critical metrics
+# - Verify that the log retention period (30 days) meets compliance and operational requirements
+# - Implement log filters and metric filters to extract valuable insights from application logs
+# - Set up cross-account monitoring if required for the project's operational structure
+# - Configure additional SNS subscriptions for different alert severity levels or team roles
