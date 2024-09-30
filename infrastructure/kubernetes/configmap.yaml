@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: podcast-automation-config
+  labels:
+    app: podcast-automation
+data:
+  DJANGO_SETTINGS_MODULE: "config.settings.production"
+  ALLOWED_HOSTS: "*.example.com"
+  DEBUG: "False"
+  LOG_LEVEL: "INFO"
+  CELERY_BROKER_URL: "redis://redis-service:6379/0"
+  CELERY_RESULT_BACKEND: "redis://redis-service:6379/0"
+  AWS_S3_BUCKET_NAME: "podcast-automation-storage"
+  AWS_REGION: "us-west-2"
+  SOCIAL_MEDIA_POST_LIMIT: "5"
+  AI_SERVICE_ENDPOINT: "https://ai-service.example.com/api/v1"
+  FRONTEND_URL: "https://app.podcastautomation.com"
+  API_VERSION: "v1"
+
+# Human tasks:
+# TODO: Replace 'example.com' with the actual domain name for ALLOWED_HOSTS
+# TODO: Verify and update the CELERY_BROKER_URL and CELERY_RESULT_BACKEND with the correct Redis service name
+# TODO: Update AWS_S3_BUCKET_NAME with the actual S3 bucket name created for the project
+# TODO: Confirm AWS_REGION is set to the correct region where the infrastructure is deployed
+# TODO: Update AI_SERVICE_ENDPOINT with the actual endpoint of the AI service
+# TODO: Set FRONTEND_URL to the actual URL where the frontend application will be hosted
+# TODO: Review and adjust all configuration values to match the production environment requirements
