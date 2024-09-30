@@ -1,0 +1,68 @@
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Ensure Nginx service is running
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Copy Nginx configuration file
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+
+- name: Create Nginx server block
+  template:
+    src: templates/podcast_saas.conf.j2
+    dest: /etc/nginx/sites-available/podcast_saas.conf
+
+- name: Enable Nginx server block
+  file:
+    src: /etc/nginx/sites-available/podcast_saas.conf
+    dest: /etc/nginx/sites-enabled/podcast_saas.conf
+    state: link
+
+- name: Remove default Nginx server block
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Install Certbot
+  apt:
+    name: certbot
+    state: present
+
+- name: Install Certbot Nginx plugin
+  apt:
+    name: python3-certbot-nginx
+    state: present
+
+- name: Obtain SSL certificate
+  command: certbot --nginx -d {{ domain_name }} --non-interactive --agree-tos -m {{ admin_email }}
+  when: use_ssl | bool
+
+- name: Set up Certbot auto-renewal
+  cron:
+    name: Certbot renewal
+    job: certbot renew --quiet --no-self-upgrade
+    minute: "0"
+    hour: "3"
+    weekday: "1"
+  when: use_ssl | bool
+
+- name: Reload Nginx to apply changes
+  service:
+    name: nginx
+    state: reloaded
+
+# Human tasks (commented):
+# - Create Nginx configuration template (templates/nginx.conf.j2)
+# - Create Nginx server block template (templates/podcast_saas.conf.j2)
+# - Define domain_name variable in vars/main.yml
+# - Define admin_email variable in vars/main.yml
+# - Define use_ssl variable in vars/main.yml
+# - Review and adjust SSL configuration if necessary
