@@ -1,0 +1,92 @@
+node_modules/
+venv/
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+poetry.lock
+yarn.lock
+package-lock.json
+
+# Build outputs
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# React
+build/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Mobile
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
+
+# Media files (if stored locally during development)
+media/
+
+# Human tasks (commented as requested)
+# TODO: Review and adjust .gitignore patterns based on specific project needs
+# TODO: Ensure all team members are using the same .gitignore file
