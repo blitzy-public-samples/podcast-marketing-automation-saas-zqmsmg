@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating and configuring S3 buckets required for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project, used as a prefix for resource names
+
+Resources:
+  AudioFilesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-audio-files
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToGlacier
+            Status: Enabled
+            Transitions:
+              - StorageClass: Glacier
+                TransitionInDays: 90
+
+  TranscriptsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-transcripts
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  MarketingAssetsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-marketing-assets
+      AccessControl: Private
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub OAI for ${ProjectName} S3 buckets
+
+  AudioFilesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AudioFilesBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub arn:aws:s3:::${AudioFilesBucket}/*
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+
+  MarketingAssetsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref MarketingAssetsBucket
+      PolicyDocument:
+        Statement:
+          - Action: s3:GetObject
+            Effect: Allow
+            Resource: !Sub arn:aws:s3:::${MarketingAssetsBucket}/*
+            Principal:
+              CanonicalUser: !GetAtt CloudFrontOAI.S3CanonicalUserId
+
+Outputs:
+  AudioFilesBucketName:
+    Description: Name of the S3 bucket for storing audio files
+    Value: !Ref AudioFilesBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-AudioFilesBucketName
+
+  TranscriptsBucketName:
+    Description: Name of the S3 bucket for storing transcripts
+    Value: !Ref TranscriptsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-TranscriptsBucketName
+
+  MarketingAssetsBucketName:
+    Description: Name of the S3 bucket for storing marketing assets
+    Value: !Ref MarketingAssetsBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-MarketingAssetsBucketName
+
+  CloudFrontOAIId:
+    Description: ID of the CloudFront Origin Access Identity
+    Value: !Ref CloudFrontOAI
+    Export:
+      Name: !Sub ${AWS::StackName}-CloudFrontOAIId
