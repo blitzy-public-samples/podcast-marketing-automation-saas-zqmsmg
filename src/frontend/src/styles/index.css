@@ -1,0 +1,40 @@
+@import './tailwind.css';
+
+/* Global styles */
+body {
+    font-family: 'Inter', sans-serif;
+    @apply bg-light-gray text-deep-blue;
+}
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-light-gray;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-deep-blue rounded-full;
+}
+
+/* Custom focus styles for accessibility */
+:focus {
+    outline: 2px solid #7C3AED;
+    outline-offset: 2px;
+}
+
+/* Custom utility classes */
+.text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-deep-blue to-teal;
+}
+
+.card-shadow {
+    @apply shadow-md hover:shadow-lg transition-shadow duration-300;
+}
+
+/* Human tasks:
+ * TODO: Review and adjust global styles as needed during the development process (Optional)
+ * TODO: Ensure accessibility standards are met in the global styles (Required)
+ */
