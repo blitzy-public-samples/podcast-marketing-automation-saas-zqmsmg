@@ -1,0 +1,87 @@
+---
+# Ansible tasks for setting up and configuring the database for the Podcast Marketing Automation SaaS platform
+
+# Ensure PostgreSQL is installed
+- name: Ensure PostgreSQL is installed
+  apt:
+    name: postgresql
+    state: present
+
+# Ensure PostgreSQL Python library is installed
+- name: Ensure PostgreSQL Python library is installed
+  apt:
+    name: python3-psycopg2
+    state: present
+
+# Ensure PostgreSQL service is running
+- name: Ensure PostgreSQL service is running
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+# Create PostgreSQL database
+- name: Create PostgreSQL database
+  postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+
+# Create PostgreSQL user
+- name: Create PostgreSQL user
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    role_attr_flags: CREATEDB,SUPERUSER
+
+# Grant privileges to user on database
+- name: Grant privileges to user on database
+  postgresql_privs:
+    type: database
+    database: "{{ db_name }}"
+    roles: "{{ db_user }}"
+    privs: ALL
+
+# Configure PostgreSQL for remote connections
+- name: Configure PostgreSQL for remote connections
+  lineinfile:
+    path: /etc/postgresql/12/main/postgresql.conf
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+
+# Allow remote connections to PostgreSQL
+- name: Allow remote connections to PostgreSQL
+  lineinfile:
+    path: /etc/postgresql/12/main/pg_hba.conf
+    line: "host    all    all    0.0.0.0/0    md5"
+
+# Restart PostgreSQL service
+- name: Restart PostgreSQL service
+  service:
+    name: postgresql
+    state: restarted
+
+# Install PostgreSQL backup tools
+- name: Install PostgreSQL backup tools
+  apt:
+    name: postgresql-client
+    state: present
+
+# Create backup directory
+- name: Create backup directory
+  file:
+    path: /var/backups/postgresql
+    state: directory
+    mode: '0755'
+
+# Setup daily PostgreSQL backups
+- name: Setup daily PostgreSQL backups
+  cron:
+    name: "Daily PostgreSQL backup"
+    job: "pg_dump -U {{ db_user }} -d {{ db_name }} | gzip > /var/backups/postgresql/backup_$(date +\\%Y\\%m\\%d).sql.gz"
+    special_time: daily
+
+# Human tasks (commented)
+# TODO: Review and adjust PostgreSQL configuration settings for production use
+# TODO: Implement proper secret management for database credentials
+# TODO: Set up a more robust backup strategy, possibly including off-site backups
+# TODO: Configure PostgreSQL for high availability if required
