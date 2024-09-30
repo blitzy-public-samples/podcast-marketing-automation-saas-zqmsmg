@@ -1,0 +1,170 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating Lambda functions and related resources for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project
+
+  Environment:
+    Type: String
+    Description: Environment (e.g., dev, staging, prod)
+    AllowedValues: 
+      - dev
+      - staging
+      - prod
+
+  VpcStackName:
+    Type: String
+    Description: Name of the VPC CloudFormation stack
+
+  EcsStackName:
+    Type: String
+    Description: Name of the ECS CloudFormation stack
+
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing Lambda function code
+
+  TranscriptionLambdaCodeKey:
+    Type: String
+    Description: S3 key for the transcription Lambda function code
+
+  ContentGenerationLambdaCodeKey:
+    Type: String
+    Description: S3 key for the content generation Lambda function code
+
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 
+                - lambda.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-lambda-execution-role
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  TranscriptionLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-transcription-function
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref TranscriptionLambdaCodeKey
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 1024
+      VpcConfig:
+        SecurityGroupIds: 
+          - !Ref LambdaSecurityGroup
+        SubnetIds: 
+          - !ImportValue 
+            'Fn::Sub': ${VpcStackName}-PrivateSubnetId
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          ECS_CLUSTER: !ImportValue 
+            'Fn::Sub': ${EcsStackName}-ECSClusterName
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-transcription-function
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ContentGenerationLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub ${ProjectName}-${Environment}-content-generation-function
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref ContentGenerationLambdaCodeKey
+      Runtime: python3.9
+      Timeout: 300
+      MemorySize: 1024
+      VpcConfig:
+        SecurityGroupIds: 
+          - !Ref LambdaSecurityGroup
+        SubnetIds: 
+          - !ImportValue 
+            'Fn::Sub': ${VpcStackName}-PrivateSubnetId
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          ECS_CLUSTER: !ImportValue 
+            'Fn::Sub': ${EcsStackName}-ECSClusterName
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-content-generation-function
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !ImportValue 
+        'Fn::Sub': ${VpcStackName}-VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-lambda-sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  TranscriptionLambdaFunctionArn:
+    Description: The ARN of the transcription Lambda function
+    Value: !GetAtt TranscriptionLambdaFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-TranscriptionLambdaFunctionArn
+
+  ContentGenerationLambdaFunctionArn:
+    Description: The ARN of the content generation Lambda function
+    Value: !GetAtt ContentGenerationLambdaFunction.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-ContentGenerationLambdaFunctionArn
+
+  LambdaSecurityGroupId:
+    Description: The ID of the Lambda security group
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-LambdaSecurityGroupId
+
+# Human Tasks:
+# - Review and adjust the Lambda function memory and timeout settings to ensure they meet the application requirements
+# - Verify that the Lambda function code is correctly uploaded to the specified S3 bucket and keys
+# - Confirm that the Lambda execution role has all necessary permissions for accessing required AWS services
+# - Validate that the Lambda functions' VPC configuration is correct and allows access to necessary resources
+# - Ensure that the Lambda security group's egress rules are properly configured for the functions' needs
+# - Consider implementing CloudWatch alarms for Lambda function errors and duration
+# - Review the environment variables passed to the Lambda functions and ensure they are correct
+# - Implement proper error handling and logging within the Lambda function code
+# - Consider implementing X-Ray tracing for the Lambda functions to aid in debugging and performance analysis
