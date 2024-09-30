@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating and configuring CloudFront distributions for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project, used as a prefix for resource names
+
+  AudioFilesBucketName:
+    Type: String
+    Description: Name of the S3 bucket for storing audio files
+
+  MarketingAssetsBucketName:
+    Type: String
+    Description: Name of the S3 bucket for storing marketing assets
+
+  CloudFrontOAIId:
+    Type: String
+    Description: ID of the CloudFront Origin Access Identity
+
+Resources:
+  AudioFilesCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: AudioFilesS3Origin
+            DomainName: !Join 
+              - ''
+              - [!Ref AudioFilesBucketName, '.s3.amazonaws.com']
+            S3OriginConfig:
+              OriginAccessIdentity: !Join 
+                - ''
+                - ['origin-access-identity/cloudfront/', !Ref CloudFrontOAIId]
+        Enabled: true
+        HttpVersion: http2
+        DefaultCacheBehavior:
+          AllowedMethods: 
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: AudioFilesS3Origin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          DefaultTTL: 300
+          MaxTTL: 1200
+          Compress: true
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  MarketingAssetsCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: MarketingAssetsS3Origin
+            DomainName: !Join 
+              - ''
+              - [!Ref MarketingAssetsBucketName, '.s3.amazonaws.com']
+            S3OriginConfig:
+              OriginAccessIdentity: !Join 
+                - ''
+                - ['origin-access-identity/cloudfront/', !Ref CloudFrontOAIId]
+        Enabled: true
+        HttpVersion: http2
+        DefaultCacheBehavior:
+          AllowedMethods: 
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: MarketingAssetsS3Origin
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          ViewerProtocolPolicy: redirect-to-https
+          MinTTL: 0
+          DefaultTTL: 300
+          MaxTTL: 1200
+          Compress: true
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+Outputs:
+  AudioFilesDistributionDomainName:
+    Description: Domain name of the CloudFront distribution for audio files
+    Value: !GetAtt AudioFilesCloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-AudioFilesDistributionDomainName
+
+  MarketingAssetsDistributionDomainName:
+    Description: Domain name of the CloudFront distribution for marketing assets
+    Value: !GetAtt MarketingAssetsCloudFrontDistribution.DomainName
+    Export:
+      Name: !Sub ${AWS::StackName}-MarketingAssetsDistributionDomainName
+
+# Human Tasks:
+# - Review and adjust CloudFront distribution settings based on specific project requirements
+# - Consider adding custom domain names and SSL certificates for the CloudFront distributions
+# - Evaluate the need for additional CloudFront behaviors or origins based on the project's content delivery requirements
+# - Assess the geographical restrictions and price class settings for the CloudFront distributions
