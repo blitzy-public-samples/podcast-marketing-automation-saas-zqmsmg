@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for setting up Amazon Cognito User Pool and Identity Pool for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  IAMStackName:
+    Type: String
+    Description: Name of the IAM stack to import values from
+
+Resources:
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: PodcastMarketingAutomationUserPool
+      UsernameAttributes: 
+        - email
+      AutoVerifiedAttributes: 
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      MfaConfiguration: OPTIONAL
+      EnabledMfas: 
+        - SOFTWARE_TOKEN_MFA
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: PodcastMarketingAutomationWebClient
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+
+  CognitoIdentityPool:
+    Type: AWS::Cognito::IdentityPool
+    Properties:
+      IdentityPoolName: PodcastMarketingAutomationIdentityPool
+      AllowUnauthenticatedIdentities: false
+      CognitoIdentityProviders:
+        - ClientId: !Ref CognitoUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+
+  CognitoIdentityPoolRoles:
+    Type: AWS::Cognito::IdentityPoolRoleAttachment
+    Properties:
+      IdentityPoolId: !Ref CognitoIdentityPool
+      Roles:
+        authenticated: 
+          Fn::ImportValue: 
+            !Sub "${IAMStackName}-CognitoAuthenticatedUserRole"
+        unauthenticated: 
+          Fn::ImportValue: 
+            !Sub "${IAMStackName}-CognitoUnauthenticatedUserRole"
+
+Outputs:
+  UserPoolId:
+    Description: ID of the Cognito User Pool
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: CognitoUserPoolId
+
+  UserPoolClientId:
+    Description: ID of the Cognito User Pool Client
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: CognitoUserPoolClientId
+
+  IdentityPoolId:
+    Description: ID of the Cognito Identity Pool
+    Value: !Ref CognitoIdentityPool
+    Export:
+      Name: CognitoIdentityPoolId
+
+# Human Tasks:
+# - Review and adjust Cognito User Pool settings based on specific security requirements
+# - Ensure that the IAM roles referenced in CognitoIdentityPoolRoles are correctly defined in the IAM stack
+# - Configure additional Cognito triggers if needed (e.g., pre-sign-up, post-confirmation)
