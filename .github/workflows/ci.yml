@@ -1,0 +1,120 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  CI: true
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/api/requirements.txt
+
+      - name: Run backend linting
+        run: |
+          pip install flake8
+          flake8 src/api
+
+      - name: Run backend unit tests
+        run: |
+          cd src/api
+          python manage.py test
+
+      - name: Run backend integration tests
+        run: |
+          cd src/api
+          python manage.py test --tag=integration
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 14
+
+      - name: Install frontend dependencies
+        run: |
+          cd src/frontend
+          npm ci
+
+      - name: Run frontend linting
+        run: |
+          cd src/frontend
+          npm run lint
+
+      - name: Run frontend unit tests
+        run: |
+          cd src/frontend
+          npm test
+
+      - name: Run frontend integration tests
+        run: |
+          cd src/frontend
+          npm run test:integration
+
+  build-and-push:
+    name: Build and Push Docker Images
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build backend Docker image
+        run: |
+          docker build -t podcast-marketing-backend:${{ github.sha }} -f src/api/Dockerfile src/api
+
+      - name: Build frontend Docker image
+        run: |
+          docker build -t podcast-marketing-frontend:${{ github.sha }} -f src/frontend/Dockerfile src/frontend
+
+      - name: Push images to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_BACKEND: podcast-marketing-backend
+          ECR_REPOSITORY_FRONTEND: podcast-marketing-frontend
+        run: |
+          docker tag podcast-marketing-backend:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:${{ github.sha }}
+          docker tag podcast-marketing-frontend:${{ github.sha }} $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_BACKEND:${{ github.sha }}
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_FRONTEND:${{ github.sha }}
+
+# Human tasks:
+# - Set up AWS credentials as GitHub secrets (Critical)
+# - Configure ECR repository details (Critical)
+# - Review and adjust test coverage thresholds (Required)
