@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating ElastiCache resources for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project
+
+  Environment:
+    Type: String
+    Description: Environment (e.g., dev, staging, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+  VpcStackName:
+    Type: String
+    Description: Name of the VPC CloudFormation stack
+
+  CacheNodeType:
+    Type: String
+    Description: The compute and memory capacity of the nodes in the Cache Cluster
+    Default: cache.t3.micro
+
+  NumCacheNodes:
+    Type: Number
+    Description: The number of Cache Nodes the Cache Cluster should have
+    Default: 1
+
+  ApplicationSecurityGroup:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security group ID of the application servers
+
+Resources:
+  ElastiCacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for ElastiCache
+      SubnetIds: 
+        Fn::Split:
+          - ","
+          - Fn::ImportValue:
+              Fn::Sub: "${VpcStackName}-PrivateSubnetIds"
+
+  ElastiCacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ElastiCache
+      VpcId: 
+        Fn::ImportValue:
+          Fn::Sub: "${VpcStackName}-VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-elasticache-sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ElastiCacheCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: !Sub ${ProjectName}-${Environment}-cache
+      Engine: redis
+      CacheNodeType: !Ref CacheNodeType
+      NumCacheNodes: !Ref NumCacheNodes
+      CacheSubnetGroupName: !Ref ElastiCacheSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref ElastiCacheSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${Environment}-cache
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  ElastiCacheClusterId:
+    Description: The ID of the ElastiCache Cluster
+    Value: !Ref ElastiCacheCluster
+    Export:
+      Name: !Sub ${AWS::StackName}-ElastiCacheClusterId
+
+  ElastiCacheAddress:
+    Description: The DNS address of the ElastiCache Cluster
+    Value: !GetAtt ElastiCacheCluster.RedisEndpoint.Address
+    Export:
+      Name: !Sub ${AWS::StackName}-ElastiCacheAddress
+
+  ElastiCachePort:
+    Description: The port of the ElastiCache Cluster
+    Value: !GetAtt ElastiCacheCluster.RedisEndpoint.Port
+    Export:
+      Name: !Sub ${AWS::StackName}-ElastiCachePort
+
+# Human Tasks:
+# - Review and adjust the CacheNodeType parameter to ensure it meets the performance requirements of the application
+# - Validate that the NumCacheNodes parameter is set correctly for the desired level of redundancy and performance
+# - Confirm that the ApplicationSecurityGroup parameter is correctly populated with the security group of the application servers
+# - Review the ElastiCache engine version and consider specifying a specific version if required
+# - Consider adding additional parameters for cache configuration options (e.g., MaxMemoryPolicy, SnapshotRetentionLimit) if needed
+# - Evaluate if encryption at rest or in-transit is required for the ElastiCache cluster and add the necessary configurations
+# - Assess whether a Multi-AZ deployment is necessary for high availability and add the required configurations if needed
+# - Review the tags applied to the ElastiCache resources and ensure they meet the organization's tagging strategy
