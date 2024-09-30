@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CloudFormation template for creating the ECR repository for the Podcast Marketing Automation SaaS platform
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Name of the project
+
+  Environment:
+    Type: String
+    Description: Environment (e.g., dev, staging, prod)
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+
+Resources:
+  ECRRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-${Environment}-repository"
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: AES256
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-${Environment}-repository"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: !Ref ProjectName
+
+  ECRRepositoryPolicy:
+    Type: AWS::ECR::RepositoryPolicy
+    Properties:
+      RepositoryName: !Ref ECRRepository
+      PolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+              - ecr:PutImage
+              - ecr:InitiateLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:CompleteLayerUpload
+
+  ECRLifecyclePolicy:
+    Type: AWS::ECR::LifecyclePolicy
+    Properties:
+      RepositoryName: !Ref ECRRepository
+      LifecyclePolicyText: |
+        {
+          "rules": [
+            {
+              "rulePriority": 1,
+              "description": "Keep last 10 images",
+              "selection": {
+                "tagStatus": "tagged",
+                "tagPrefixList": ["v"],
+                "countType": "imageCountMoreThan",
+                "countNumber": 10
+              },
+              "action": {
+                "type": "expire"
+              }
+            },
+            {
+              "rulePriority": 2,
+              "description": "Expire untagged images older than 14 days",
+              "selection": {
+                "tagStatus": "untagged",
+                "countType": "sinceImagePushed",
+                "countUnit": "days",
+                "countNumber": 14
+              },
+              "action": {
+                "type": "expire"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  ECRRepositoryName:
+    Description: The name of the ECR repository
+    Value: !Ref ECRRepository
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRRepositoryName"
+
+  ECRRepositoryUri:
+    Description: The URI of the ECR repository
+    Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ECRRepository}"
+    Export:
+      Name: !Sub "${AWS::StackName}-ECRRepositoryUri"
+
+# Human tasks:
+# - Review the ECR repository lifecycle policy to ensure it aligns with the project's image retention requirements
+# - Verify that the ECR repository policy grants appropriate access to necessary IAM roles or users
+# - Confirm that image scanning on push is enabled and review the process for handling vulnerabilities
+# - Ensure that the ECR repository naming convention follows the organization's standards
+# - Review the encryption configuration and consider using AWS KMS for additional security if required
+# - Set up a process for regularly reviewing and rotating ECR access keys
+# - Implement a tagging strategy for container images to be stored in the ECR repository
+# - Configure CloudTrail to monitor ECR repository activities for audit and compliance purposes
