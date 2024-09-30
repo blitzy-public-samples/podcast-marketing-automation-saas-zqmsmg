@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ../../src/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=0
+      - DATABASE_URL=postgres://user:password@db:5432/podcast_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      - db
+      - redis
+
+  frontend:
+    build:
+      context: ../../src/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+  db:
+    image: postgres:14
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=podcast_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  redis:
+    image: redis:6-alpine
+
+  celery:
+    build:
+      context: ../../src/api
+      dockerfile: Dockerfile
+    command: celery -A config worker -l info
+    depends_on:
+      - api
+      - redis
+
+volumes:
+  postgres_data: {}
+
+# Human Tasks:
+# - Set up proper environment variables for production use (Critical)
+# - Configure proper networking for production environment (Required)
+# - Implement health checks for all services (Required)
+# - Set up logging drivers for centralized logging (Required)
+# - Configure proper resource limits for containers (Required)
+# - Implement secrets management for sensitive information (Critical)
