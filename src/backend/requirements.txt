@@ -1,0 +1,25 @@
+djangorestframework==3.14.*
+psycopg2-binary==2.9.*
+celery==5.2.*
+redis==4.5.*
+gunicorn==20.1.*
+python-dotenv==1.0.*
+django-cors-headers==3.14.*
+djangorestframework-simplejwt==5.2.*
+boto3==1.26.*
+google-cloud-speech==2.19.*
+openai==0.27.*
+requests==2.28.*
+django-storages==1.13.*
+Pillow==9.5.*
+django-filter==23.1
+drf-yasg==1.21.*
+pytest==7.3.*
+pytest-django==4.5.*
+factory-boy==3.2.*
+coverage==7.2.*
+
+# Human tasks:
+# TODO: Review and update package versions regularly for security patches and new features
+# TODO: Ensure all required packages for production deployment are included
+# TODO: Consider adding version pins for indirect dependencies to ensure reproducible builds
