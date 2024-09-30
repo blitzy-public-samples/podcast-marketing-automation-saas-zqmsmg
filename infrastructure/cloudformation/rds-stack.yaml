@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS Stack for Podcast Marketing Automation SaaS Platform
+
+Parameters:
+  DBInstanceIdentifier:
+    Type: String
+    Description: Identifier for the RDS instance
+
+  DBName:
+    Type: String
+    Description: Name of the initial database
+
+  DBUsername:
+    Type: String
+    Description: Username for the database
+
+  DBPassword:
+    Type: String
+    Description: Password for the database
+    NoEcho: true
+
+  DBInstanceClass:
+    Type: String
+    Description: The compute and memory capacity of the DB instance
+    Default: db.t3.micro
+
+  VPCStackName:
+    Type: String
+    Description: Name of the VPC Stack
+
+Resources:
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Ref DBInstanceIdentifier
+      DBName: !Ref DBName
+      Engine: postgres
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: '20'
+      MaxAllocatedStorage: '100'
+      BackupRetentionPeriod: 7
+      MultiAZ: true
+      PubliclyAccessible: false
+      VPCSecurityGroups: 
+        - !ImportValue 
+          'Fn::Sub': '${VPCStackName}-DatabaseSecurityGroup'
+      DBSubnetGroupName: 
+        !ImportValue 
+          'Fn::Sub': '${VPCStackName}-DBSubnetGroup'
+      StorageEncrypted: true
+
+Outputs:
+  RDSEndpoint:
+    Description: Endpoint of the RDS instance
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-RDSEndpoint'
+
+  RDSPort:
+    Description: Port of the RDS instance
+    Value: !GetAtt RDSInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-RDSPort'
+
+# Human Tasks:
+# - Review and adjust the DBInstanceClass parameter default value based on expected workload
+# - Ensure that the VPCStackName parameter is correctly set when deploying this stack
+# - Review and potentially increase the AllocatedStorage and MaxAllocatedStorage values based on expected data growth
+# - Implement a secure method for providing the DBPassword parameter, such as using AWS Secrets Manager
