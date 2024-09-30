@@ -1,0 +1,24 @@
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: podcast-automation-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: podcast-automation-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 70
+
+---
+# Human Tasks:
+# - Verify that the 'podcast-automation-app' Deployment name matches the one in the deployment.yaml file (Critical)
+# - Adjust minReplicas and maxReplicas based on expected load and cluster capacity (Required)
+# - Consider adding memory-based scaling if applicable to the application's requirements (Optional)
+# - Ensure the Kubernetes cluster has the metrics-server installed for HPA to function properly (Critical)
