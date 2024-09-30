@@ -1,0 +1,165 @@
+---
+# Ansible tasks for setting up and configuring monitoring for the Podcast Marketing Automation SaaS platform
+
+- name: Install monitoring agents
+  block:
+    - name: Install CloudWatch agent
+      ansible.builtin.apt:
+        name: amazon-cloudwatch-agent
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Prometheus node exporter
+      ansible.builtin.apt:
+        name: prometheus-node-exporter
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Filebeat for log shipping
+      ansible.builtin.apt:
+        deb: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.15.0-amd64.deb
+      when: ansible_os_family == "Debian"
+
+- name: Configure CloudWatch agent
+  block:
+    - name: Create CloudWatch agent configuration file
+      ansible.builtin.template:
+        src: cloudwatch-agent-config.json.j2
+        dest: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+        mode: '0644'
+
+    - name: Set up log collection for application logs
+      ansible.builtin.lineinfile:
+        path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+        regexp: '"log_group_name":'
+        line: '      "log_group_name": "{{ application_log_group }}",'
+        insertafter: '"logs":'
+
+    - name: Configure system metric collection
+      ansible.builtin.lineinfile:
+        path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+        regexp: '"metrics_collection_interval":'
+        line: '      "metrics_collection_interval": 60,'
+        insertafter: '"metrics":'
+
+    - name: Start CloudWatch agent service
+      ansible.builtin.systemd:
+        name: amazon-cloudwatch-agent
+        state: started
+        enabled: yes
+
+- name: Set up Prometheus node exporter
+  block:
+    - name: Configure node exporter options
+      ansible.builtin.template:
+        src: node_exporter.service.j2
+        dest: /etc/systemd/system/node_exporter.service
+        mode: '0644'
+
+    - name: Start node exporter service
+      ansible.builtin.systemd:
+        name: node_exporter
+        state: started
+        enabled: yes
+
+- name: Configure Filebeat
+  block:
+    - name: Create Filebeat configuration file
+      ansible.builtin.template:
+        src: filebeat.yml.j2
+        dest: /etc/filebeat/filebeat.yml
+        mode: '0644'
+
+    - name: Configure log input sources
+      ansible.builtin.lineinfile:
+        path: /etc/filebeat/filebeat.yml
+        regexp: 'paths:'
+        line: '    paths:'
+        insertafter: '- type: log'
+
+    - name: Set up output to ship logs to Elasticsearch
+      ansible.builtin.lineinfile:
+        path: /etc/filebeat/filebeat.yml
+        regexp: 'hosts: \["localhost:9200"\]'
+        line: '  hosts: ["{{ elasticsearch_host }}:{{ elasticsearch_port }}"]'
+        insertafter: 'output.elasticsearch:'
+
+    - name: Start Filebeat service
+      ansible.builtin.systemd:
+        name: filebeat
+        state: started
+        enabled: yes
+
+- name: Set up alerting
+  block:
+    - name: Set up CloudWatch alarms for critical metrics
+      community.aws.cloudwatch_metric_alarm:
+        state: present
+        name: "{{ item.name }}"
+        metric: "{{ item.metric }}"
+        namespace: "{{ item.namespace }}"
+        statistic: "{{ item.statistic }}"
+        comparison: "{{ item.comparison }}"
+        threshold: "{{ item.threshold }}"
+        period: "{{ item.period }}"
+        evaluation_periods: "{{ item.evaluation_periods }}"
+        unit: "{{ item.unit }}"
+        description: "{{ item.description }}"
+        dimensions: "{{ item.dimensions }}"
+        alarm_actions: "{{ sns_topic_arn }}"
+      loop: "{{ cloudwatch_alarms }}"
+
+    - name: Configure SNS topics for notifications
+      community.aws.sns_topic:
+        name: "{{ sns_topic_name }}"
+        state: present
+        subscriptions:
+          - endpoint: "{{ ops_team_email }}"
+            protocol: email
+
+    - name: Set up Prometheus alerting rules
+      ansible.builtin.template:
+        src: prometheus_rules.yml.j2
+        dest: /etc/prometheus/rules/alerting_rules.yml
+        mode: '0644'
+
+    - name: Configure AlertManager for Prometheus alerts
+      ansible.builtin.template:
+        src: alertmanager.yml.j2
+        dest: /etc/alertmanager/alertmanager.yml
+        mode: '0644'
+
+- name: Create monitoring dashboards
+  block:
+    - name: Create CloudWatch dashboards for overall system health
+      community.aws.cloudwatch_dashboard:
+        dashboard_name: "{{ cloudwatch_dashboard_name }}"
+        state: present
+        dashboard_body: "{{ lookup('template', 'cloudwatch_dashboard.json.j2') }}"
+
+    - name: Set up Grafana dashboards for detailed metrics
+      ansible.builtin.uri:
+        url: "http://{{ grafana_host }}:{{ grafana_port }}/api/dashboards/db"
+        method: POST
+        body: "{{ lookup('template', 'grafana_dashboard.json.j2') }}"
+        body_format: json
+        headers:
+          Authorization: "Bearer {{ grafana_api_key }}"
+        status_code: 200
+
+    - name: Configure Kibana dashboards for log analysis
+      ansible.builtin.uri:
+        url: "http://{{ kibana_host }}:{{ kibana_port }}/api/saved_objects/dashboard/{{ item }}"
+        method: POST
+        body: "{{ lookup('template', 'kibana_dashboard_' + item + '.json.j2') }}"
+        body_format: json
+        headers:
+          kbn-xsrf: "true"
+          Authorization: "Basic {{ kibana_auth | b64encode }}"
+        status_code: 200
+      loop: "{{ kibana_dashboard_ids }}"
+
+# Human tasks (commented)
+# - Review and adjust alerting thresholds based on application-specific requirements
+# - Integrate with existing team communication tools (e.g., Slack, PagerDuty) for alerts
+# - Define and document runbooks for common alert scenarios
