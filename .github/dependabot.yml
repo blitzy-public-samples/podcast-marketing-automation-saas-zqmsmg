@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/src/frontend"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "production"
+    ignore:
+      - dependency-name: "react"
+        versions: ["17.x", "18.x"]
+      - dependency-name: "react-dom"
+        versions: ["17.x", "18.x"]
+
+  - package-ecosystem: "npm"
+    directory: "/src/mobile"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "production"
+
+  - package-ecosystem: "pip"
+    directory: "/src/backend"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "production"
+
+  - package-ecosystem: "pip"
+    directory: "/src/api"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "production"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
