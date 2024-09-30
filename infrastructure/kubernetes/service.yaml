@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: podcast-automation-service
+  labels:
+    app: podcast-automation
+spec:
+  selector:
+    app: podcast-automation
+  ports:
+    - name: backend
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+    - name: frontend
+      protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+
+---
+# Human Tasks:
+# TODO: Verify that the service port numbers match the actual application port numbers
+# TODO: Consider using an Ingress resource instead of LoadBalancer type if using an ingress controller
+# TODO: Ensure proper network policies are in place to secure the service
+# TODO: Set up SSL/TLS termination for secure communication
