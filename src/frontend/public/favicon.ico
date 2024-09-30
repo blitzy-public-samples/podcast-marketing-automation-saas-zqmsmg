@@ -1,0 +1,25 @@
+Key points about this file:
+1. It should be a small, recognizable icon representing the platform's brand.
+2. Typical dimensions include 16x16 pixels, 32x32 pixels, or multiple sizes in the same file.
+3. Keep the file size small for fast loading (ideally under 10KB).
+4. The icon should be simple and scalable, recognizable even at small sizes.
+5. Consider including multiple sizes in the ICO file for better display across different contexts.
+
+To create this file:
+1. Design a simple, recognizable logo for the Podcast Marketing Automation SaaS platform.
+2. Create versions of the logo at 16x16, 32x32, and optionally 48x48 pixels.
+3. Use an ICO file creator tool or image editing software that supports ICO format.
+4. Save the file as 'favicon.ico' in the 'src/frontend/public/' directory.
+
+This file will be automatically detected by most browsers when placed in the public directory.
+For explicit reference, include the following line in the <head> section of your HTML:
+<link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+
+Remember to optimize the favicon for various sizes and contexts to ensure it looks good
+across different devices and browser implementations.
+
+Human tasks:
+1. Design and create a favicon that represents the Podcast Marketing Automation SaaS platform's brand (Required)
+2. Optimize the favicon for various sizes and contexts (Optional)
+
+Once the favicon is created, replace this comment with the actual ICO file.
