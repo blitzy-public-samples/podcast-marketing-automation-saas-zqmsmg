@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: podcast-automation-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+    - hosts:
+        - podcast-automation.example.com
+      secretName: podcast-automation-tls
+  rules:
+    - host: podcast-automation.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: podcast-automation-backend
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: podcast-automation-frontend
+                port:
+                  number: 80
+```
+
+# Human Tasks (commented):
+```yaml
+# TODO: Replace 'podcast-automation.example.com' with the actual domain name for the application
+# TODO: Ensure the 'letsencrypt-prod' cluster issuer is set up for automatic SSL certificate management
+# TODO: Verify that the NGINX Ingress Controller is installed in the cluster
+# TODO: Confirm that the service names 'podcast-automation-backend' and 'podcast-automation-frontend' match the actual service names defined in the Kubernetes service configurations
+# TODO: Adjust the paths and routing rules if necessary to match the application's API and frontend structure
